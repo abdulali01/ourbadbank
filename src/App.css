@@ -1,3 +1,26 @@
+.home-background {
+  background-position: top center;
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 85vh;
+
+}
+.home-background::before {
+  content: '';
+  background-image: url("links.jpg");
+  background-repeat: no-repeat;
+  background-size: cover;
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  left: 0px;
+  opacity: 0.75;
+}
+
 .App {
   text-align: center;
 }
