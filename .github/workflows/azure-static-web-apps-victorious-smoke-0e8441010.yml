@@ -1,46 +1,41 @@
-name: Azure Static Web Apps CI/CD
-
+name: Report bundle size in PR
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    types: [opened, synchronize, reopened, closed]
-    branches:
-      - main
-
+  - pull_request
 jobs:
-  build_and_deploy_job:
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+  bundle-size:
     runs-on: ubuntu-latest
-    name: Build and Deploy Job
+    if: github.actor != 'renovate'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
-          submodules: true
-          lfs: false
-      - name: Build And Deploy
-        id: builddeploy
-        uses: Azure/static-web-apps-deploy@v1
+          fetch-depth: 0
+      - run: corepack enable
+      - uses: actions/setup-node@v4
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_SMOKE_0E8441010 }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for Github integrations (i.e. PR comments)
-          action: "upload"
-          ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
-          # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
-          app_location: "/" # App source code path
-          api_location: "" # Api source code path - optional
-          output_location: "" # Built app content directory - optional
-          ###### End of Repository/Build Configurations ######
+          node-version: 20
+          cache: "pnpm"
+      
+      - name: Install dependencies
+        run: pnpm install
 
-  close_pull_request_job:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    name: Close Pull Request Job
-    steps:
-      - name: Close Pull Request
-        id: closepullrequest
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_SMOKE_0E8441010 }}
-          action: "close"
+      - name: Generate types
+        run: pnpm exec nuxi prepare
+
+      - name: Run nuxi analyze
+        run: pnpm exec nuxi analyze --no-serve
+
+      - name: Get values
+        run: |
+          CLIENT_BUNDLE=$(jq .size.clientBundle .nuxt/analyze/meta.json)
+          NITRO_BUNDLE=$(jq .size.nitroBundle .nuxt/analyze/meta.json)
+          echo "clientBundle=$CLIENT_BUNDLE" >> "$GITHUB_ENV"
+          echo "nitroBundle=$NITRO_BUNDLE" >> "$GITHUB_ENV"
+        shell: bash
+        
+      - name: Create PR comment # TODO: https://github.com/peter-evans/create-or-update-comment
+        run: |
+          COMMENT="Client bundle: $((clientBundle / 1024)) KB, Server bundle: $((nitroBundle / 1024)) KB"
+          COMMENT_URL=$(gh pr comment ${{ github.event.number }} --body "$COMMENT")
+          COMMENT_ID=${COMMENT_URL##*issuecomment-}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
