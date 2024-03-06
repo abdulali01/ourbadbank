@@ -11,7 +11,7 @@ function BankForm({
     successButton
   }){
     const ctx = React.useContext(UserContext); 
-    const [show, setShow]         = React.useState(true);
+    const [show, setShow]         = React.useContext(true);
     const [status, setStatus]     = React.useState('');
     const [name, setName]         = React.useState('');
     const [email, setEmail]       = React.useState('');
