@@ -1,41 +1,21 @@
-name: Report bundle size in PR
+name: Your Workflow Name
+
 on:
-  - pull_request
+  push:
+    branches:
+      - main  # Adjust as needed
+
 jobs:
-  bundle-size:
+  build:
     runs-on: ubuntu-latest
-    if: github.actor != 'renovate'
+    
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - run: corepack enable
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "pnpm"
+    - name: Checkout code
+      uses: actions/checkout@v2
       
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Generate types
-        run: pnpm exec nuxi prepare
-
-      - name: Run nuxi analyze
-        run: pnpm exec nuxi analyze --no-serve
-
-      - name: Get values
-        run: |
-          CLIENT_BUNDLE=$(jq .size.clientBundle .nuxt/analyze/meta.json)
-          NITRO_BUNDLE=$(jq .size.nitroBundle .nuxt/analyze/meta.json)
-          echo "clientBundle=$CLIENT_BUNDLE" >> "$GITHUB_ENV"
-          echo "nitroBundle=$NITRO_BUNDLE" >> "$GITHUB_ENV"
-        shell: bash
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
         
-      - name: Create PR comment # TODO: https://github.com/peter-evans/create-or-update-comment
-        run: |
-          COMMENT="Client bundle: $((clientBundle / 1024)) KB, Server bundle: $((nitroBundle / 1024)) KB"
-          COMMENT_URL=$(gh pr comment ${{ github.event.number }} --body "$COMMENT")
-          COMMENT_ID=${COMMENT_URL##*issuecomment-}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # Add other steps for your build process as needed
